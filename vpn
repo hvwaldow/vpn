@@ -51,6 +51,8 @@ if {[lindex $argv 0] == "on"} {
 } elseif {[lindex $argv 0] == "off"} {
     spawn "/opt/cisco/anyconnect/bin/vpn"
     expect "VPN>" { send "disconnect\r" }
-    expect "not connected" { exit }
-    expect "Disconnected" { exit }
+    expect {
+	"not connected" { exit }
+	"Disconnected" { exit }
+    }
 }
