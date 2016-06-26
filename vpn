@@ -1,0 +1,56 @@
+#!/usr/bin/expect
+
+# HvW - 2016-06-26
+# Serves to establish a VPN connection that requires 2-factor
+# authentification.
+#
+# This script is quite specific for my environment.
+# The expect - code is so that it "just works for me".
+#
+# Assumptions:
+# + expect (http://expect.sourceforge.net/) is installed.
+# + VPN client installed: Cisco AnyConnect Secure Mobility Client.
+# + The Standard Unix Password Manager "pass"
+#   (https://www.passwordstore.org/) is installed.
+# + Authentication via RFC 6238 (TOTP) as "second factor" is enabled.
+# + oathtool (https://savannah.nongnu.org/projects/oath-toolkit/) is installed.
+# + Both, password and TOTP-key are managed by pass.
+
+set VPNSERVER "the.vpn.server.org"
+set GROUP "group_name"
+set USERNAME "username"
+set PASS_PATH_UN "mypasswords/vpn_username"
+set PASS_PATH_KEY "my_otp_keys/vpn_totp-key"
+
+set timeout 20
+
+proc usage {} {
+    puts "Usage:"
+    puts "    vpn on | off\r"
+    puts "    vpn -h\r"
+    exit
+}
+
+if {[lindex $argv 0] == "-h" || $argc == 0} {
+    usage
+}
+
+if {[lindex $argv 0] == "on"} {
+    spawn "/opt/cisco/anyconnect/bin/vpn"
+    expect "VPN>" { send "connect $VPNSERVER\r" }
+    expect "*onnect Anyway?*" { send "y\r" }
+    expect "*Group*" { send "$GROUP\r" }
+    expect "*sername:*" { send "$USERNAME\r" }
+    set pw [exec pass $PASS_PATH_UN]
+    expect "*assword:*" { send "$pw\r" }
+    set oatkey [exec pass $PASS_PATH_KEY]
+    set code [exec oathtool  --totp $oatkey]
+    expect "*PASSCODE*" { send "$code\r" }
+    expect "state: Connected" { exit }
+
+} elseif {[lindex $argv 0] == "off"} {
+    spawn "/opt/cisco/anyconnect/bin/vpn"
+    expect "VPN>" { send "disconnect\r" }
+    expect "not connected" { exit }
+    expect "Disconnected" { exit }
+}
