@@ -16,17 +16,12 @@
 # + oathtool (https://savannah.nongnu.org/projects/oath-toolkit/) is installed.
 # + Both, password and TOTP-key are managed by pass.
 
-set VPNSERVER "the.vpn.server.org"
-set GROUP "group_name"
-set USERNAME "username"
-set PASS_PATH_UN "mypasswords/vpn_username"
-set PASS_PATH_KEY "my_otp_keys/vpn_totp-key"
-
+set USERNAME "vonwalha"
 set timeout 20
 
 proc usage {} {
     puts "Usage:"
-    puts "    vpn on | off\r"
+    puts "    vpn on | off [eaw | ethz]\r"
     puts "    vpn -h\r"
     exit
 }
@@ -35,17 +30,36 @@ if {[lindex $argv 0] == "-h" || $argc == 0} {
     usage
 }
 
+set serv [lindex $argv 1]
+if {$serv == "" || $serv == "eaw"} {
+    set VPNSERVER "sslvpn.eawag.ch"
+    set PASS_PATH_KEY "eawag/otp"
+    set PASS_PATH_UN "eawag/vonwalha"
+    set GROUP "Eawag"
+} elseif {$serv == "ethz"} {
+    set VPNSERVER "sslvpn.ethz.ch"
+    set PASS_PATH_UN "eawag/nethz-pw"
+    set GROUP "ETHZ"
+} else {
+    puts "No valid vpnserver provided"
+    usage
+}
+	
 if {[lindex $argv 0] == "on"} {
     spawn "/opt/cisco/anyconnect/bin/vpn"
     expect "VPN>" { send "connect $VPNSERVER\r" }
-    expect "*onnect Anyway?*" { send "y\r" }
-    expect "*Group*" { send "$GROUP\r" }
+    if {$VPNSERVER == "sslvpn.eawag.ch"} {
+	expect "*onnect Anyway?*" { send "y\r" }
+	expect "*Group*" { send "$GROUP\r" }
+    }
     expect "*sername:*" { send "$USERNAME\r" }
     set pw [exec pass $PASS_PATH_UN]
     expect "*assword:*" { send "$pw\r" }
-    set oatkey [exec pass $PASS_PATH_KEY]
-    set code [exec oathtool  --totp $oatkey]
-    expect "*PASSCODE*" { send "$code\r" }
+    if {$VPNSERVER == "sslvpn.eawag.ch"} {
+	set oatkey [exec pass $PASS_PATH_KEY]
+	set code [exec oathtool  --totp $oatkey]
+	expect "*PASSCODE*" { send "$code\r" }
+    }
     expect "state: Connected" { exit }
 
 } elseif {[lindex $argv 0] == "off"} {
