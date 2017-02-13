@@ -21,7 +21,7 @@ set timeout 20
 
 proc usage {} {
     puts "Usage:"
-    puts "    vpn on | off [eaw | ethz]\r"
+    puts "    vpn on | off \[eaw | ethz\]\r"
     puts "    vpn -h\r"
     exit
 }
