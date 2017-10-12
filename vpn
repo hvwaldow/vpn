@@ -21,7 +21,7 @@ set timeout 20
 
 proc usage {} {
     puts "Usage:"
-    puts "    vpn on | off \[eaw | ethz\]\r"
+    puts "    vpn on | off [eaw | ethz]\r"
     puts "    vpn -h\r"
     exit
 }
@@ -32,7 +32,9 @@ if {[lindex $argv 0] == "-h" || $argc == 0} {
 
 set serv [lindex $argv 1]
 if {$serv == "" || $serv == "eaw"} {
-    set VPNSERVER "sslvpn.eawag.ch"
+    # set VPNSERVER "sslvpn.eawag.ch"
+    set VPNSERVER "vpn.eawag-empa.ch"
+    set INST "eawag"
     set PASS_PATH_KEY "eawag/otp"
     set PASS_PATH_UN "eawag/vonwalha"
     set GROUP "Eawag"
@@ -48,14 +50,21 @@ if {$serv == "" || $serv == "eaw"} {
 if {[lindex $argv 0] == "on"} {
     spawn "/opt/cisco/anyconnect/bin/vpn"
     expect "VPN>" { send "connect $VPNSERVER\r" }
-    if {$VPNSERVER == "sslvpn.eawag.ch"} {
-	expect "*onnect Anyway?*" { send "y\r" }
-	expect "*Group*" { send "$GROUP\r" }
+    if {$INST == "eawag"} {
+	expect {
+	    "*import the certificate?*" {
+		send "y\r"
+		exp_continue }
+	    "*onnect Anyway?*" {
+		send "y\r"
+		exp_continue }
+	    "*Group*" { send "$GROUP\r" }
+	}
     }
     expect "*sername:*" { send "$USERNAME\r" }
     set pw [exec pass $PASS_PATH_UN]
     expect "*assword:*" { send "$pw\r" }
-    if {$VPNSERVER == "sslvpn.eawag.ch"} {
+    if {$INST == "eawag"} {
 	set oatkey [exec pass $PASS_PATH_KEY]
 	set code [exec oathtool  --totp $oatkey]
 	expect "*PASSCODE*" { send "$code\r" }
